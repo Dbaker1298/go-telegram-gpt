@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/PullRequestInc/go-gpt3"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -73,4 +74,44 @@ func main() {
 	// be able to debug our logs in runtime
 	bot.Debug = true
 	log.Printf("Authorized on account %s", bot.Self.UserName)
+
+	u := tgbotapi.NewUpdate(0)
+	u.Timeout = 60
+	updates, err := bot.GetUpdatesChan(u) // get any new updates from the bot
+
+	for update := range updates {
+		if update.Message == nil { // ignore any non-Message updates
+			continue
+		}
+
+		if !strings.HasPrefix(update.Message.Text, "/topic") && !strings.HasPrefix(update.Message.Text, "/phrase") {
+			continue
+		}
+
+		if strings.HasPrefix(update.Message.Text, "/topic") {
+			userPrompt = strings.TrimPrefix(update.Message.Text, "/topic")
+			gptPrompt = config.Preamble + "TOPIC: "
+		} else if strings.HasPrefix(update.Message.Text, "/phrase") {
+			userPrompt = strings.TrimPrefix(update.Message.Text, "/phrase")
+			gptPrompt = config.Preamble + "PHRASE: "
+		}
+
+		if userPrompt != "" {
+			gptPrompt += userPrompt
+			response := sendChatGPT(apiKey, gptPrompt)
+			update.Message.Text = response
+		} else {
+			update.Message.Text = "Please enter a valid prompt of /topic or /phrase."
+		}
+
+		// Now we send this to telegram
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
+		msg.ReplyToMessageID = update.Message.MessageID
+
+		// Send the message
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Println("ERROR: ", err)
+		}
+	}
 }
