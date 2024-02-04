@@ -1,4 +1,5 @@
-# go-telegram-gpt
+# go-telegram-gpt DEPRECATED: Engines within GPT-3 are DEPRECATED
+# PROJECT NEEDS REFACTOR!
 
 ## An ELI5 Telegram Bot using OpenAI API
 
